@@ -4,41 +4,35 @@ using UnityEngine.EventSystems;
 public class PlayerToolController : MonoBehaviour
 {
     [Header("Setup")]
-    public Camera mainCam;                  // assign or will use Camera.main
-    public GameObject foodPelletPrefab;     // drag your Food prefab here
-    public LayerMask fishLayer = ~0;        // optional: set to "Fish" layer in Inspector
+    public Camera mainCam;
+    public GameObject foodPelletPrefab;
+    public LayerMask fishLayer = ~0;
 
-    // drag state
-    private Fish grabbedFish;
-    private Vector3 grabOffsetLocal;        // offset from fish pivot to cursor (local space)
-    private float grabbedZ;
+    public FishInfoUI fishInfoUI;
+
+    Fish grabbedFish;
+    Vector3 grabOffsetLocal;
+    float grabbedZ;
 
     void Update()
     {
         if (!mainCam) mainCam = Camera.main;
         if (ToolManager.Instance == null) return;
 
-        // Ignore clicks when cursor is over UI
-        //if (EventSystem.current && EventSystem.current.IsPointerOverGameObject()) return;
-
         switch (ToolManager.Instance.currentTool)
         {
             case ToolType.Hand:
                 HandleHand();
                 break;
-
             case ToolType.Food:
                 HandleFood();
                 break;
-
             case ToolType.Medicine:
                 HandleMedicine();
                 break;
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // HAND: click a fish to grab + drag; release to drop
     void HandleHand()
     {
         if (Input.GetMouseButtonDown(0))
@@ -46,19 +40,22 @@ public class PlayerToolController : MonoBehaviour
 
         if (grabbedFish)
         {
-            // While holding, move fish with cursor
             var world = mainCam.ScreenToWorldPoint(Input.mousePosition);
             world.z = grabbedZ;
             var target = grabbedFish.transform.parent
                 ? grabbedFish.transform.parent.TransformPoint(grabOffsetLocal)
                 : grabbedFish.transform.TransformPoint(grabOffsetLocal);
-            // move so that the original offset tracks the cursor
             var delta = world - target;
             grabbedFish.transform.position += delta;
 
             if (Input.GetMouseButtonUp(0))
+            {
                 grabbedFish = null;
+                if (fishInfoUI) fishInfoUI.Hide();   // NEW
+            }
+
         }
+
     }
 
     void TryStartGrab()
@@ -73,13 +70,14 @@ public class PlayerToolController : MonoBehaviour
         grabbedFish = fish;
         grabbedZ = fish.transform.position.z;
 
-        // store local offset so the cursor “sticks” to the same place on the fish
         var local = fish.transform.InverseTransformPoint(world);
         grabOffsetLocal = local;
+
+        // NEW: tell UI to show
+        if (fishInfoUI) fishInfoUI.Show(fish);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // FOOD: left click drops one pellet at cursor
+
     void HandleFood()
     {
         if (!foodPelletPrefab) return;
@@ -91,8 +89,6 @@ public class PlayerToolController : MonoBehaviour
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // MEDICINE: left click uses medicine once (spends gold, heals water)
     void HandleMedicine()
     {
         if (Input.GetMouseButtonDown(0))

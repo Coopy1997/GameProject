@@ -1,150 +1,143 @@
-using UnityEngine;
+﻿using UnityEngine;
 
-[RequireComponent(typeof(Rigidbody2D))]
-[RequireComponent(typeof(Collider2D))]
 public class Fish : MonoBehaviour
 {
-    public float minSpeed = 1.0f;
-    public float maxSpeed = 2.2f;
+    [Header("Identity")]
+    public string fishName = "Fish";
+    public string breedId = "SunnyGuppy";
+    public string breedDisplayName = "Sunny Guppy";
 
-    public float foodSenseRadius = 3.5f;
-    public float eatDistance = 0.65f;
-    public LayerMask foodMask;
+    [Header("Age")]
+    public float ageSeconds = 0f;
 
-    public float verticalWanderStrength = 0.4f;
-    public float verticalSeekStrength = 1.2f;
-    public float maxVerticalSpeed = 0.8f;
+    [Header("Hunger & Health")]
+    public float hunger = 1f;           // 0–1
+    public float health = 1f;           // 0–1
+    public float hungerDrainPerSecond = 0.05f;
 
-    public float flipDeadzoneX = 0.35f;
-    public float flipCooldown = 0.35f;
+    public float Hunger01 => Mathf.Clamp01(hunger);
+    public float health01 => Mathf.Clamp01(health);
 
-    public int maxHunger = 100;
-    public float hungerPerSecond = 4f;
-    public float fullTime = 50f;
-    public HungerBar hungerBar;
+    [Header("Movement")]
+    public float speed = 1.5f;
+    public float idleTimeMin = 1f;
+    public float idleTimeMax = 4f;
+    private Vector2 targetDir;
+    private float idleTimer;
 
-    public float wallXPadding = 0.2f;
-    public float wallYPadding = 0.3f;
+    [Header("Traits")]
+    public string[] traits;
 
-    Rigidbody2D rb;
-    SpriteRenderer sr;
-    TankBounds tank;
+    [Header("Breeding")]
+    public bool canBreed = true;
+    public float baseBreedChance = 0.5f;
+    public float breedCooldown = 30f;
+    public float breedTimer = 0f;
 
-    float speed;
-    int hunger;
-    bool isFull;
-    float fullTimer;
-    int direction = 1; // +1 right, -1 left
-    float wanderOffset;
-    float nextFlipTime;
+    public bool CanBreed()
+    {
+        return canBreed && breedTimer <= 0f;
+    }
+
+    [Header("References")]
+    public SpriteRenderer sr;
+    private TankBounds tank;
 
     void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        sr = GetComponent<SpriteRenderer>();
+        if (!sr) sr = GetComponent<SpriteRenderer>();
         tank = FindObjectOfType<TankBounds>();
-
-        rb.gravityScale = 0f;
-        rb.drag = 0.5f;
-        rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-
-        speed = Random.Range(minSpeed, maxSpeed);
-        hunger = maxHunger / 2;
-        wanderOffset = Random.Range(0f, 100f);
+        PickNewDirection();
     }
 
     void Update()
     {
-        if (isFull)
-        {
-            fullTimer -= Time.deltaTime;
-            if (fullTimer <= 0f) isFull = false;
-        }
-        else
-        {
-            hunger -= Mathf.CeilToInt(hungerPerSecond * Time.deltaTime);
-            if (hunger < 0) hunger = 0;
-        }
-        if (hungerBar) hungerBar.Set(hunger, maxHunger);
+        ageSeconds += Time.deltaTime;
+
+        UpdateHunger();
+        UpdateHealth();
+        UpdateBreedingTimer();
+        UpdateMovement();
     }
 
-    void FixedUpdate()
+    void UpdateBreedingTimer()
+    {
+        if (breedTimer > 0f)
+            breedTimer -= Time.deltaTime;
+    }
+
+    void UpdateHunger()
+    {
+        hunger -= hungerDrainPerSecond * Time.deltaTime;
+        hunger = Mathf.Clamp01(hunger);
+    }
+
+    void UpdateHealth()
+    {
+        if (hunger < 0.25f)
+            health -= (0.25f - hunger) * 0.1f * Time.deltaTime;
+
+        if (hunger > 0.75f)
+            health += (hunger - 0.75f) * 0.05f * Time.deltaTime;
+
+        health = Mathf.Clamp01(health);
+
+        if (health <= 0f)
+            Die();
+    }
+
+    void UpdateMovement()
     {
         if (!tank) return;
 
-        Vector2 pos = rb.position;
+        idleTimer -= Time.deltaTime;
+        if (idleTimer <= 0f)
+            PickNewDirection();
 
-        Collider2D nearest = null;
-        float best = float.MaxValue;
-        int mask = (foodMask.value == 0) ? Physics2D.AllLayers : foodMask.value;
+        transform.position += (Vector3)(targetDir * speed * Time.deltaTime);
 
-        if (!isFull)
-        {
-            var hits = Physics2D.OverlapCircleAll(pos, foodSenseRadius, mask);
-            for (int i = 0; i < hits.Length; i++)
-            {
-                var h = hits[i];
-                if (!h || !h.TryGetComponent<Food>(out _)) continue;
-                float d = (h.transform.position - (Vector3)pos).sqrMagnitude;
-                if (d < best) { best = d; nearest = h; }
-            }
-        }
+        if (sr)
+            sr.flipX = targetDir.x < 0;
 
-        float vx = direction * speed;
+        Vector2 min = tank.min;
+        Vector2 max = tank.max;
+        Vector3 pos = transform.position;
 
-        float vy = Mathf.Sin((Time.time + wanderOffset) * 0.8f) * verticalWanderStrength;
-        if (nearest)
-        {
-            Vector2 toFood = (Vector2)nearest.transform.position - pos;
-            float dx = toFood.x;
-            float dy = toFood.y;
+        if (pos.x < min.x || pos.x > max.x)
+            targetDir.x *= -1;
 
-            if (Time.time >= nextFlipTime && Mathf.Abs(dx) > flipDeadzoneX)
-            {
-                int want = dx >= 0f ? 1 : -1;
-                if (want != direction)
-                {
-                    direction = want;
-                    nextFlipTime = Time.time + flipCooldown;
-                }
-            }
-
-            float targetVy = Mathf.Clamp(dy * verticalSeekStrength, -maxVerticalSpeed, maxVerticalSpeed);
-            vy = Mathf.MoveTowards(vy, targetVy, 2f * Time.fixedDeltaTime);
-
-            float dist = toFood.magnitude;
-            if (dist <= eatDistance)
-            {
-                if (nearest.TryGetComponent<Food>(out var food))
-                {
-                    hunger = Mathf.Min(maxHunger, hunger + food.nutrition);
-                    Object.Destroy(food.gameObject);
-                    if (hunger >= maxHunger)
-                    {
-                        isFull = true;
-                        fullTimer = fullTime;
-                    }
-                    if (hungerBar) hungerBar.Set(hunger, maxHunger);
-                }
-            }
-        }
-
-        Vector2 v = new Vector2(vx, vy);
-        v.y = Mathf.Clamp(v.y, -maxVerticalSpeed, maxVerticalSpeed);
-        rb.velocity = v;
-
-        if (pos.x > tank.max.x - wallXPadding) { rb.position = new Vector2(tank.max.x - wallXPadding, pos.y); direction = -1; nextFlipTime = Time.time + flipCooldown; }
-        if (pos.x < tank.min.x + wallXPadding) { rb.position = new Vector2(tank.min.x + wallXPadding, pos.y); direction = 1; nextFlipTime = Time.time + flipCooldown; }
-        if (pos.y > tank.max.y - wallYPadding) rb.position = new Vector2(pos.x, tank.max.y - wallYPadding);
-        if (pos.y < tank.min.y + wallYPadding) rb.position = new Vector2(pos.x, tank.min.y + wallYPadding);
-
-        sr.flipX = direction < 0;
-        transform.rotation = Quaternion.identity;
+        if (pos.y < min.y || pos.y > max.y)
+            targetDir.y *= -1;
     }
 
-    void OnDrawGizmosSelected()
+    void PickNewDirection()
     {
-        Gizmos.color = Color.yellow;
-        Gizmos.DrawWireSphere(transform.position, foodSenseRadius);
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        targetDir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+        idleTimer = Random.Range(idleTimeMin, idleTimeMax);
+    }
+
+    public void Eat(float amount)
+    {
+        hunger += amount;
+        hunger = Mathf.Clamp01(hunger);
+    }
+
+    public void Heal(float amount)
+    {
+        health += amount;
+        health = Mathf.Clamp01(health);
+    }
+
+    public void ApplyDamage(float amount)
+    {
+        health -= amount;
+        health = Mathf.Clamp01(health);
+        if (health <= 0) Die();
+    }
+
+    void Die()
+    {
+        Destroy(gameObject);
     }
 }
