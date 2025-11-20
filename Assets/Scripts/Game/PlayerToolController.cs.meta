@@ -1,0 +1,13 @@
+fileFormatVersion: 2
+guid: 8346ba61da18cea44a38de0329cdae46
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - mainCam: {instanceID: 0}
+  - foodPelletPrefab: {fileID: 7011212993009205350, guid: e0ee2ba81bd507c42ac546817d415466, type: 3}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

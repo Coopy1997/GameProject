@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: c770d8a99298f7b40bc4f385fe740a3a
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences:
+  - game: {instanceID: 0}
+  - panel: {fileID: 5372776356384117327, guid: bfbb97088a62cd142bc538a788040c84, type: 3}
+  - contentRoot: {fileID: 5287817539262545023, guid: 778866d72bd64824c8b32399d8bf9472, type: 3}
+  - itemButtonPrefab: {fileID: 7664513340085835826, guid: 20f446d89daa8414cb26311a94084090, type: 3}
+  - backdrop: {fileID: 8255139015905970704, guid: b6bae0ce8f9a425409a385771e8dac39, type: 3}
+  - animator: {instanceID: 0}
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

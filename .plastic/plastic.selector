@@ -1,0 +1,3 @@
+repository "Aquariam/Aquariam@20067527807962@cloud"
+  path "/"
+    smartbranch "/main/Core UI and dirt"
