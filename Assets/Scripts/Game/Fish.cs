@@ -1,18 +1,25 @@
 ﻿using UnityEngine;
 
+public enum FishSex
+{
+    Male,
+    Female
+}
+
 public class Fish : MonoBehaviour
 {
     [Header("Identity")]
     public string fishName = "Fish";
     public string breedId = "SunnyGuppy";
     public string breedDisplayName = "Sunny Guppy";
+    public FishSex sex = FishSex.Male;
 
     [Header("Age")]
     public float ageSeconds = 0f;
 
     [Header("Hunger & Health")]
-    public float hunger = 1f;           // 0–1
-    public float health = 1f;           // 0–1
+    public float hunger = 1f;                  // 0–1
+    public float health = 1f;                  // 0–1
     public float hungerDrainPerSecond = 0.05f;
 
     public float Hunger01 => Mathf.Clamp01(hunger);
@@ -22,8 +29,9 @@ public class Fish : MonoBehaviour
     public float speed = 1.5f;
     public float idleTimeMin = 1f;
     public float idleTimeMax = 4f;
-    private Vector2 targetDir;
-    private float idleTimer;
+
+    Vector2 targetDir;
+    float idleTimer;
 
     [Header("Traits")]
     public string[] traits;
@@ -41,7 +49,7 @@ public class Fish : MonoBehaviour
 
     [Header("References")]
     public SpriteRenderer sr;
-    private TankBounds tank;
+    TankBounds tank;
 
     void Awake()
     {
@@ -133,7 +141,7 @@ public class Fish : MonoBehaviour
     {
         health -= amount;
         health = Mathf.Clamp01(health);
-        if (health <= 0) Die();
+        if (health <= 0f) Die();
     }
 
     void Die()

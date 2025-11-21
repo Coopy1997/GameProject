@@ -1,6 +1,6 @@
-using TMPro;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 public class FishInfoUI : MonoBehaviour
 {
@@ -21,70 +21,106 @@ public class FishInfoUI : MonoBehaviour
     [Header("Traits")]
     public TMP_Text traitsText;
 
+    [Header("Rename")]
+    public RenamePopup renamePopup;
+
     private Fish current;
 
     public void Show(Fish fish)
-    {
-        SetFish(fish);
-    }
-
-    public void Hide()
-    {
-        ClearFish();
-    }
-
-    public void SetFish(Fish fish)
     {
         current = fish;
         if (root) root.SetActive(true);
         UpdateInstant();
     }
 
-    public void ClearFish()
+    public void Hide()
     {
         current = null;
         if (root) root.SetActive(false);
     }
 
-    void Update()
+    // called by RenamePopup when name changes
+    public void ForceRefresh()
     {
-        if (current != null) UpdateInstant();
+        UpdateInstant();
     }
 
-    void UpdateInstant()
+    // called by your rename button
+    public void OnRenameButtonClicked()
+    {
+        if (current != null && renamePopup != null)
+        {
+            renamePopup.Open(current, this);
+        }
+    }
+
+    void Update()
+    {
+        if (current != null)
+            UpdateInstant();
+    }
+
+    public void UpdateInstant()
     {
         if (current == null) return;
 
-        // Header
+        // NAME
         if (nameText)
+        {
             nameText.text = string.IsNullOrEmpty(current.fishName)
                 ? "Unnamed Fish"
                 : current.fishName;
+        }
 
+        // BREED + SEX + AGE
         if (breedAgeText)
         {
             int m = Mathf.FloorToInt(current.ageSeconds / 60f);
             int s = Mathf.FloorToInt(current.ageSeconds % 60f);
             string age = $"{m}m {s}s";
-            breedAgeText.text = $"{current.breedDisplayName}  �  Age: {age}";
+
+            string sexSymbol = "?";
+            switch (current.sex)
+            {
+                case FishSex.Male: sexSymbol = "♂"; break;
+                case FishSex.Female: sexSymbol = "♀"; break;
+            }
+
+            // e.g. "Sunny Guppy  •  ♀  •  Age: 0m 42s"
+            breedAgeText.text = $"{current.breedDisplayName}  •  {sexSymbol}  •  Age: {age}";
         }
 
-        // You can set the icon sprite from the fish's SpriteRenderer
+        // ICON (uses fish's current sprite)
         if (iconImage)
         {
             var sr = current.GetComponent<SpriteRenderer>();
-            if (sr) iconImage.sprite = sr.sprite;
+            if (sr && sr.sprite)
+            {
+                iconImage.enabled = true;
+                iconImage.sprite = sr.sprite;
+                iconImage.preserveAspect = true;
+            }
+            else
+            {
+                iconImage.enabled = false;
+            }
         }
 
-        // Hunger
-        if (hungerLabel) hungerLabel.text = "Hunger";
-        if (hungerBar) hungerBar.fillAmount = current.Hunger01;
+        // HUNGER
+        if (hungerLabel)
+            hungerLabel.text = "Hunger";
 
-        // Health
-        if (healthLabel) healthLabel.text = "Health";
-        if (healthBar) healthBar.fillAmount = current.health01;
+        if (hungerBar)
+            hungerBar.fillAmount = current.Hunger01;
 
-        // Traits
+        // HEALTH
+        if (healthLabel)
+            healthLabel.text = "Health";
+
+        if (healthBar)
+            healthBar.fillAmount = current.health01;
+
+        // TRAITS
         if (traitsText)
         {
             if (current.traits != null && current.traits.Length > 0)
@@ -92,15 +128,15 @@ public class FishInfoUI : MonoBehaviour
                 traitsText.text = "Traits:\n";
                 for (int i = 0; i < current.traits.Length; i++)
                 {
-                    if (!string.IsNullOrWhiteSpace(current.traits[i]))
-                        traitsText.text += "� " + current.traits[i] + "\n";
+                    var t = current.traits[i];
+                    if (!string.IsNullOrWhiteSpace(t))
+                        traitsText.text += "• " + t + "\n";
                 }
             }
             else
             {
-                traitsText.text = "Traits:\n� None";
+                traitsText.text = "Traits:\n• None";
             }
-
         }
     }
 }
