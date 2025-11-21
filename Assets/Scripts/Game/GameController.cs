@@ -48,7 +48,6 @@ public class GameController : MonoBehaviour
         UpdateFishCount();
     }
 
-    // gold stuff
     public void UpdateGoldUI()
     {
         if (goldText) goldText.text = gold + " G";
@@ -75,7 +74,6 @@ public class GameController : MonoBehaviour
         return true;
     }
 
-    // fish spawning
     public Fish SpawnFish()
     {
         if (GetFishCount() >= maxFish)
@@ -183,7 +181,6 @@ public class GameController : MonoBehaviour
         return new Vector3(x, y, 0f);
     }
 
-    // economy hooks
     public void OnFishFed(Fish fish)
     {
         AddGold(goldPerFishFeed);
@@ -200,16 +197,7 @@ public class GameController : MonoBehaviour
     {
         if (fish == null) return;
 
-        float mult = 1f;
-        try
-        {
-            mult = fish.GetSellPriceMultiplier();
-        }
-        catch
-        {
-            mult = 1f;
-        }
-
+        float mult = fish.GetSellPriceMultiplier();
         int amount = Mathf.RoundToInt(goldPerFishSell * mult);
         if (amount < 0) amount = 0;
 
@@ -219,7 +207,6 @@ public class GameController : MonoBehaviour
         PlaySound(sellSound);
     }
 
-    // fish count + water health
     public int GetFishCount()
     {
         Fish[] fish = FindObjectsOfType<Fish>();
@@ -235,7 +222,6 @@ public class GameController : MonoBehaviour
         }
     }
 
-    // audio
     public void PlaySound(AudioClip clip)
     {
         if (audioSource && clip)

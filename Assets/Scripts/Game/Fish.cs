@@ -37,7 +37,6 @@ public class Fish : MonoBehaviour
     public float speed = 1.5f;
     public float idleTimeMin = 1f;
     public float idleTimeMax = 4f;
-
     Vector2 targetDir;
     float idleTimer;
 
@@ -50,23 +49,55 @@ public class Fish : MonoBehaviour
     public float breedCooldown = 30f;
     public float breedTimer = 0f;
 
-    [Header("References")]
+    [Header("Growth")]
+    public bool isBaby = false;
+    public float babyDuration = 20f;
+    public float babyScale = 0.4f;
+    public float adultScale = 1f;
+    float babyAge = 0f;
+    public Sprite babySprite;
+    public Sprite adultSprite;
+
+    [Header("Visuals")]
     public SpriteRenderer sr;
+    public GameObject sparklePrefab;
+
     TankBounds tank;
 
     void Awake()
     {
         if (!sr) sr = GetComponent<SpriteRenderer>();
         tank = FindObjectOfType<TankBounds>();
-        PickNewDirection();
 
         if (traits == null || traits.Count == 0)
         {
-            traits = TraitDatabase.GetRandomTraits(1, 3);
+            traits = TraitDatabase.GetRandomTraits(1, 2);
         }
 
-        if (UnityEngine.Random.value < 0.5f) sex = FishSex.Male;
+        if (Random.value < 0.5f) sex = FishSex.Male;
         else sex = FishSex.Female;
+
+        if (adultSprite == null && sr != null)
+        {
+            adultSprite = sr.sprite;
+        }
+
+        if (isBaby)
+        {
+            babyAge = 0f;
+            if (babySprite != null && sr != null)
+            {
+                sr.sprite = babySprite;
+            }
+            transform.localScale = Vector3.one * babyScale;
+        }
+        else
+        {
+            transform.localScale = Vector3.one * adultScale;
+        }
+
+        CheckLegendarySparkle();
+        PickNewDirection();
     }
 
     void Update()
@@ -74,10 +105,38 @@ public class Fish : MonoBehaviour
         float ageMul = GetAgeSpeedMultiplier();
         ageSeconds += Time.deltaTime * ageMul;
 
+        UpdateBabyGrowth();
         UpdateHunger();
         UpdateHealth();
         UpdateBreedingTimer();
         UpdateMovement();
+    }
+
+    void UpdateBabyGrowth()
+    {
+        if (!isBaby) return;
+
+        babyAge += Time.deltaTime;
+        float t = 0f;
+        if (babyDuration > 0f) t = Mathf.Clamp01(babyAge / babyDuration);
+
+        float scale = Mathf.Lerp(babyScale, adultScale, t);
+        transform.localScale = Vector3.one * scale;
+
+        if (babyAge >= babyDuration)
+        {
+            Mature();
+        }
+    }
+
+    void Mature()
+    {
+        isBaby = false;
+        if (sr != null && adultSprite != null)
+        {
+            sr.sprite = adultSprite;
+        }
+        transform.localScale = Vector3.one * adultScale;
     }
 
     void UpdateBreedingTimer()
@@ -137,7 +196,6 @@ public class Fish : MonoBehaviour
         }
 
         health = Mathf.Clamp01(health);
-
         if (health <= 0f) Die();
     }
 
@@ -202,6 +260,7 @@ public class Fish : MonoBehaviour
 
     public bool CanBreed()
     {
+        if (isBaby) return false;
         return canBreed && breedTimer <= 0f;
     }
 
@@ -215,7 +274,8 @@ public class Fish : MonoBehaviour
         if (traits == null) return false;
         for (int i = 0; i < traits.Count; i++)
         {
-            if (traits[i] != null && traits[i].type == t) return true;
+            Trait trait = traits[i];
+            if (trait != null && trait.type == t) return true;
         }
         return false;
     }
@@ -229,6 +289,23 @@ public class Fish : MonoBehaviour
         if (HasTrait(TraitType.SlowMetabolism)) m *= 0.6f;
         if (HasTrait(TraitType.Calm)) m *= 0.85f;
         if (HasTrait(TraitType.Energetic)) m *= 1.2f;
+
+        Dictionary<string, int> counts = GetTraitCounts();
+        foreach (var kv in counts)
+        {
+            if (kv.Value >= 2)
+            {
+                if (kv.Key == "Hungry" || kv.Key == "Glutton" || kv.Key == "Energetic")
+                {
+                    m *= 1.2f;
+                }
+                if (kv.Key == "Peckish" || kv.Key == "Slow Metabolism" || kv.Key == "Calm")
+                {
+                    m *= 0.8f;
+                }
+            }
+        }
+
         return m;
     }
 
@@ -278,14 +355,93 @@ public class Fish : MonoBehaviour
         if (HasTrait(TraitType.Shy)) m *= 0.8f;
         if (HasTrait(TraitType.Mutated)) m *= 1.1f;
         if (HasTrait(TraitType.Lucky)) m *= 1.1f;
+
+        Dictionary<string, int> counts = GetTraitCounts();
+        foreach (var kv in counts)
+        {
+            if (kv.Value >= 2)
+            {
+                if (kv.Key == "Breeder" || kv.Key == "Lucky")
+                {
+                    m *= 1.5f;
+                }
+            }
+        }
+
         return m;
     }
 
     public float GetSellPriceMultiplier()
     {
-        float m = 1f;
-        if (HasTrait(TraitType.JewelScales)) m *= 1.25f;
-        if (HasTrait(TraitType.Drab)) m *= 0.8f;
-        return m;
+        float mult = 1f;
+
+        for (int i = 0; i < traits.Count; i++)
+        {
+            Trait t = traits[i];
+            if (t == null) continue;
+
+            switch (t.rarity)
+            {
+                case TraitRarity.Common: mult += 0f; break;
+                case TraitRarity.Uncommon: mult += 0.1f; break;
+                case TraitRarity.Rare: mult += 0.25f; break;
+                case TraitRarity.Epic: mult += 0.5f; break;
+                case TraitRarity.Legendary: mult *= 20f; break;
+            }
+
+            if (t.type == TraitType.JewelScales)
+            {
+                mult *= 1.25f;
+            }
+            if (t.type == TraitType.Drab)
+            {
+                mult *= 0.8f;
+            }
+        }
+
+        Dictionary<string, int> counts = GetTraitCounts();
+        foreach (var kv in counts)
+        {
+            if (kv.Value >= 2)
+            {
+                mult *= 1.5f;
+            }
+        }
+
+        return mult;
+    }
+
+    Dictionary<string, int> GetTraitCounts()
+    {
+        Dictionary<string, int> counts = new Dictionary<string, int>();
+        if (traits == null) return counts;
+
+        for (int i = 0; i < traits.Count; i++)
+        {
+            Trait t = traits[i];
+            if (t == null) continue;
+            string n = t.name;
+            if (!counts.ContainsKey(n)) counts[n] = 0;
+            counts[n]++;
+        }
+        return counts;
+    }
+
+    void CheckLegendarySparkle()
+    {
+        if (sparklePrefab == null) return;
+        if (traits == null) return;
+
+        for (int i = 0; i < traits.Count; i++)
+        {
+            Trait t = traits[i];
+            if (t == null) continue;
+            if (t.rarity == TraitRarity.Legendary)
+            {
+                GameObject s = Instantiate(sparklePrefab, transform);
+                s.transform.localPosition = Vector3.zero;
+                break;
+            }
+        }
     }
 }

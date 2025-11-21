@@ -25,7 +25,6 @@ public class FishInfoUI : MonoBehaviour
     public RenamePopup renamePopup;
 
     Fish current;
-
     [HideInInspector] public string traitsTooltip = "";
 
     public Fish CurrentFish
@@ -85,11 +84,18 @@ public class FishInfoUI : MonoBehaviour
             int s = Mathf.FloorToInt(current.ageSeconds % 60f);
             string age = m + "m " + s + "s";
 
-            string sexSymbol = "?";
-            if (current.sex == FishSex.Male) sexSymbol = "♂";
-            else if (current.sex == FishSex.Female) sexSymbol = "♀";
+            if (current.isBaby)
+            {
+                breedAgeText.text = "???  •  Age: " + age;
+            }
+            else
+            {
+                string sexSymbol = "?";
+                if (current.sex == FishSex.Male) sexSymbol = "♂";
+                else if (current.sex == FishSex.Female) sexSymbol = "♀";
 
-            breedAgeText.text = current.breedDisplayName + "  •  " + sexSymbol + "  •  Age: " + age;
+                breedAgeText.text = current.breedDisplayName + "  •  " + sexSymbol + "  •  Age: " + age;
+            }
         }
 
         if (iconImage)
@@ -115,31 +121,39 @@ public class FishInfoUI : MonoBehaviour
 
         if (traitsText)
         {
-            traitsTooltip = "";
-
-            if (current.traits != null && current.traits.Count > 0)
+            if (current.isBaby)
             {
-                traitsText.text = "Traits\n\n";
-
-                for (int i = 0; i < current.traits.Count; i++)
-                {
-                    var t = current.traits[i];
-                    if (t == null) continue;
-
-                    traitsText.text += "• " + t.name + "\n";
-
-                    traitsTooltip += t.name + " - " + t.description + "\n";
-                }
-
-                if (string.IsNullOrEmpty(traitsTooltip))
-                {
-                    traitsTooltip = traitsText.text;
-                }
+                traitsText.text = "Traits:\n\n??? (Unknown until mature)";
+                traitsTooltip = "Traits are unknown while this fish is a baby.";
             }
             else
             {
-                traitsText.text = "Traits:\n• None";
-                traitsTooltip = "Traits:\n• None";
+                traitsTooltip = "";
+
+                if (current.traits != null && current.traits.Count > 0)
+                {
+                    traitsText.text = "Traits:\n\n";
+
+                    for (int i = 0; i < current.traits.Count; i++)
+                    {
+                        Trait t = current.traits[i];
+                        if (t == null) continue;
+
+                        string color = TraitColors.GetColor(t.rarity);
+                        traitsText.text += "<color=" + color + ">• " + t.name + "</color>\n";
+                        traitsTooltip += "<color=" + color + ">" + t.name + "</color> - " + t.description + "\n";
+                    }
+
+                    if (string.IsNullOrEmpty(traitsTooltip))
+                    {
+                        traitsTooltip = traitsText.text;
+                    }
+                }
+                else
+                {
+                    traitsText.text = "Traits:\n\n• None";
+                    traitsTooltip = "Traits:\n• None";
+                }
             }
         }
     }

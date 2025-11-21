@@ -1,0 +1,119 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1001 &7134115871782673184
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -3.91
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0.677
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 686123424556595397, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1334015904574248556, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_Name
+      value: FishRubyGoldie
+      objectReference: {fileID: 0}
+    - target: {fileID: 1823081473245276739, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_Size.x
+      value: 10.24
+      objectReference: {fileID: 0}
+    - target: {fileID: 1823081473245276739, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_Size.y
+      value: 10.24
+      objectReference: {fileID: 0}
+    - target: {fileID: 1823081473245276739, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 3ab752a35487878468ceea71c6895854, type: 3}
+    - target: {fileID: 1823081473245276739, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_WasSpriteAssigned
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2891176671510647815, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: m_Controller
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: breedId
+      value: RubyGoldie
+      objectReference: {fileID: 0}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: fishName
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: babyScale
+      value: 0.1
+      objectReference: {fileID: 0}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: adultScale
+      value: 0.2
+      objectReference: {fileID: 0}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: babySprite
+      value: 
+      objectReference: {fileID: -1841855709, guid: a0e1c8963528cc24b9f587cb71d60918, type: 3}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: adultSprite
+      value: 
+      objectReference: {fileID: 21300000, guid: 3ab752a35487878468ceea71c6895854, type: 3}
+    - target: {fileID: 9179646162377002001, guid: f2164ad057870d744a7ea77220691a52, type: 3}
+      propertyPath: breedDisplayName
+      value: Ruby Goldie
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: f2164ad057870d744a7ea77220691a52, type: 3}
