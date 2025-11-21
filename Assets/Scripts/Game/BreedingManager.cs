@@ -106,7 +106,7 @@ public class BreedingManager : MonoBehaviour
             child.fishName = "";
             child.breedId = breedId;
             child.breedDisplayName = displayName;
-            child.traits = TraitDatabase.GetRandomTraits(1, 3);
+            child.traits = TraitDatabase.GetRandomTraits(1, 2);
         }
 
         a.TriggerBreedCooldown();

@@ -119,7 +119,7 @@ public class FishInfoUI : MonoBehaviour
 
             if (current.traits != null && current.traits.Count > 0)
             {
-                traitsText.text = "Traits:\n";
+                traitsText.text = "Traits\n\n";
 
                 for (int i = 0; i < current.traits.Count; i++)
                 {
