@@ -3,105 +3,113 @@ using UnityEngine;
 
 public class BreedingManager : MonoBehaviour
 {
+    public GameController gameController;
     public float checkInterval = 5f;
-    public float minWaterRatio = 0.6f;
+    public float maxDistance = 1.5f;
+    public float minAgeSeconds = 20f;
+    public float minHealth = 0.6f;
+    public float minHunger = 0.5f;
+    public float globalBreedMultiplier = 0.5f;
+    public int maxFishInTank = 30;
 
-    float t;
+    float timer;
 
     void Update()
     {
-        t -= Time.deltaTime;
-        if (t <= 0f)
+        timer -= Time.deltaTime;
+        if (timer <= 0f)
         {
-            t = checkInterval;
-            TryBreedOnce();
+            timer = checkInterval;
+            TryBreed();
         }
     }
 
-    void TryBreedOnce()
+    void TryBreed()
     {
-        if (!GameController.Instance) return;
-        var gc = GameController.Instance;
+        Fish[] fishArray = FindObjectsOfType<Fish>();
+        if (fishArray == null || fishArray.Length == 0) return;
 
-        if (gc.allFish.Count >= gc.maxFish) return;
+        if (fishArray.Length >= maxFishInTank) return;
 
-        var wh = WaterHealthController.Instance;
-        if (wh)
+        List<Fish> list = new List<Fish>();
+        for (int i = 0; i < fishArray.Length; i++)
         {
-            float ratio = wh.maxHealth > 0 ? (float)wh.currentHealth / wh.maxHealth : 0f;
-            if (ratio < minWaterRatio) return;
+            if (fishArray[i] != null) list.Add(fishArray[i]);
         }
 
-        List<Fish> candidates = new List<Fish>();
-        for (int i = 0; i < gc.allFish.Count; i++)
+        int count = list.Count;
+        if (count < 2) return;
+
+        for (int i = 0; i < count; i++)
         {
-            var f = gc.allFish[i];
-            if (f == null) continue;
-            if (!f.CanBreed()) continue;
-            candidates.Add(f);
-        }
+            for (int j = i + 1; j < count; j++)
+            {
+                Fish a = list[i];
+                Fish b = list[j];
 
-        if (candidates.Count < 2) return;
+                if (a == null || b == null) continue;
+                if (a == b) continue;
 
-        var parentA = candidates[Random.Range(0, candidates.Count)];
-        var parentB = candidates[Random.Range(0, candidates.Count)];
-        if (parentA == parentB) return;
+                if (!a.CanBreed() || !b.CanBreed()) continue;
 
-        string childId = GetChildBreedId(parentA.breedId, parentB.breedId);
+                if (a.ageSeconds < minAgeSeconds || b.ageSeconds < minAgeSeconds) continue;
+                if (a.health01 < minHealth || b.health01 < minHealth) continue;
+                if (a.Hunger01 < minHunger || b.Hunger01 < minHunger) continue;
 
-        float baseChance = (parentA.baseBreedChance + parentB.baseBreedChance) * 0.5f;
-        float extraChance = GetExtraComboChance(parentA.breedId, parentB.breedId);
-        float chance = Mathf.Clamp01(baseChance + extraChance);
+                float dist = Vector2.Distance(a.transform.position, b.transform.position);
+                if (dist > maxDistance) continue;
 
-        float roll = Random.value;
-        if (roll > chance) return;
+                if (a.sex == b.sex) continue;
 
-        var baby = gc.SpawnFishByBreedId(childId);
-        if (baby != null)
-        {
-            parentA.breedTimer = parentA.breedCooldown;
-            parentB.breedTimer = parentB.breedCooldown;
+                float baseChance = (a.baseBreedChance * a.GetBreedChanceMultiplier() +
+                                    b.baseBreedChance * b.GetBreedChanceMultiplier()) * 0.5f;
+
+                float chance = baseChance * globalBreedMultiplier;
+                if (chance <= 0f) continue;
+                if (chance > 1f) chance = 1f;
+
+                float r = Random.value;
+                if (r <= chance)
+                {
+                    Vector3 pos = (a.transform.position + b.transform.position) * 0.5f;
+                    SpawnChild(a, b, pos);
+                    return;
+                }
+            }
         }
     }
 
-    string GetChildBreedId(string a, string b)
+    void SpawnChild(Fish a, Fish b, Vector3 pos)
     {
-        if ((a == "SunnyGuppy" && b == "SunnyGuppy") ||
-            (a == "SunnyGuppy" && b == "StripefinMolly") ||
-            (a == "StripefinMolly" && b == "SunnyGuppy"))
+        if (a == null || b == null) return;
+
+        string breedId = a.breedId;
+        string displayName = a.breedDisplayName;
+
+        if (gameController == null)
         {
-            if (a == "SunnyGuppy" && b == "SunnyGuppy") return "StripefinMolly";
-            if ((a == "SunnyGuppy" && b == "StripefinMolly") ||
-                (a == "StripefinMolly" && b == "SunnyGuppy")) return "MoonTetra";
+            gameController = FindObjectOfType<GameController>();
         }
 
-        if ((a == "StripefinMolly" && b == "MoonTetra") ||
-            (a == "MoonTetra" && b == "StripefinMolly"))
-            return "RoyalAngel";
+        Fish child = null;
 
-        if ((a == "MoonTetra" && b == "RoyalAngel") ||
-            (a == "RoyalAngel" && b == "MoonTetra"))
-            return "CelestialKoi";
+        if (gameController != null)
+        {
+            child = gameController.SpawnFishByBreedId(breedId, pos);
+        }
 
-        return a;
-    }
+        if (child != null)
+        {
+            child.ageSeconds = 0f;
+            child.hunger = 1f;
+            child.health = 1f;
+            child.fishName = "";
+            child.breedId = breedId;
+            child.breedDisplayName = displayName;
+            child.traits = TraitDatabase.GetRandomTraits(1, 3);
+        }
 
-    float GetExtraComboChance(string a, string b)
-    {
-        if (a == "SunnyGuppy" && b == "SunnyGuppy") return 0.4f;
-
-        if ((a == "SunnyGuppy" && b == "StripefinMolly") ||
-            (a == "StripefinMolly" && b == "SunnyGuppy"))
-            return 0.5f;
-
-        if ((a == "StripefinMolly" && b == "MoonTetra") ||
-            (a == "MoonTetra" && b == "StripefinMolly"))
-            return 0.6f;
-
-        if ((a == "MoonTetra" && b == "RoyalAngel") ||
-            (a == "RoyalAngel" && b == "MoonTetra"))
-            return 0.75f;
-
-        return 0f;
+        a.TriggerBreedCooldown();
+        b.TriggerBreedCooldown();
     }
 }

@@ -24,7 +24,14 @@ public class FishInfoUI : MonoBehaviour
     [Header("Rename")]
     public RenamePopup renamePopup;
 
-    private Fish current;
+    Fish current;
+
+    [HideInInspector] public string traitsTooltip = "";
+
+    public Fish CurrentFish
+    {
+        get { return current; }
+    }
 
     public void Show(Fish fish)
     {
@@ -39,13 +46,11 @@ public class FishInfoUI : MonoBehaviour
         if (root) root.SetActive(false);
     }
 
-    // called by RenamePopup when name changes
     public void ForceRefresh()
     {
         UpdateInstant();
     }
 
-    // called by your rename button
     public void OnRenameButtonClicked()
     {
         if (current != null && renamePopup != null)
@@ -57,40 +62,36 @@ public class FishInfoUI : MonoBehaviour
     void Update()
     {
         if (current != null)
+        {
             UpdateInstant();
+        }
     }
 
     public void UpdateInstant()
     {
         if (current == null) return;
 
-        // NAME
         if (nameText)
         {
-            nameText.text = string.IsNullOrEmpty(current.fishName)
-                ? "Unnamed Fish"
-                : current.fishName;
+            if (string.IsNullOrEmpty(current.fishName))
+                nameText.text = "Unnamed Fish";
+            else
+                nameText.text = current.fishName;
         }
 
-        // BREED + SEX + AGE
         if (breedAgeText)
         {
             int m = Mathf.FloorToInt(current.ageSeconds / 60f);
             int s = Mathf.FloorToInt(current.ageSeconds % 60f);
-            string age = $"{m}m {s}s";
+            string age = m + "m " + s + "s";
 
             string sexSymbol = "?";
-            switch (current.sex)
-            {
-                case FishSex.Male: sexSymbol = "♂"; break;
-                case FishSex.Female: sexSymbol = "♀"; break;
-            }
+            if (current.sex == FishSex.Male) sexSymbol = "♂";
+            else if (current.sex == FishSex.Female) sexSymbol = "♀";
 
-            // e.g. "Sunny Guppy  •  ♀  •  Age: 0m 42s"
-            breedAgeText.text = $"{current.breedDisplayName}  •  {sexSymbol}  •  Age: {age}";
+            breedAgeText.text = current.breedDisplayName + "  •  " + sexSymbol + "  •  Age: " + age;
         }
 
-        // ICON (uses fish's current sprite)
         if (iconImage)
         {
             var sr = current.GetComponent<SpriteRenderer>();
@@ -106,36 +107,39 @@ public class FishInfoUI : MonoBehaviour
             }
         }
 
-        // HUNGER
-        if (hungerLabel)
-            hungerLabel.text = "Hunger";
+        if (hungerLabel) hungerLabel.text = "Hunger";
+        if (healthLabel) healthLabel.text = "Health";
 
-        if (hungerBar)
-            hungerBar.fillAmount = current.Hunger01;
+        if (hungerBar) hungerBar.fillAmount = current.Hunger01;
+        if (healthBar) healthBar.fillAmount = current.health01;
 
-        // HEALTH
-        if (healthLabel)
-            healthLabel.text = "Health";
-
-        if (healthBar)
-            healthBar.fillAmount = current.health01;
-
-        // TRAITS
         if (traitsText)
         {
-            if (current.traits != null && current.traits.Length > 0)
+            traitsTooltip = "";
+
+            if (current.traits != null && current.traits.Count > 0)
             {
                 traitsText.text = "Traits:\n";
-                for (int i = 0; i < current.traits.Length; i++)
+
+                for (int i = 0; i < current.traits.Count; i++)
                 {
                     var t = current.traits[i];
-                    if (!string.IsNullOrWhiteSpace(t))
-                        traitsText.text += "• " + t + "\n";
+                    if (t == null) continue;
+
+                    traitsText.text += "• " + t.name + "\n";
+
+                    traitsTooltip += t.name + " - " + t.description + "\n";
+                }
+
+                if (string.IsNullOrEmpty(traitsTooltip))
+                {
+                    traitsTooltip = traitsText.text;
                 }
             }
             else
             {
                 traitsText.text = "Traits:\n• None";
+                traitsTooltip = "Traits:\n• None";
             }
         }
     }
