@@ -1,72 +1,45 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
-using UnityEngine.UI;
 
 public class RenamePopup : MonoBehaviour
 {
-    [Header("UI")]
-    public GameObject root;          // the whole popup, usually the RenamePopup object
-    public TMP_InputField inputField;
-    public Button okButton;
-    public Button cancelButton;
+    public GameObject window;
+    public TMP_InputField nameInput;
 
-    private Fish targetFish;
-    private FishInfoUI infoUI;
+    Fish targetFish;
+    FishInfoUI infoUI;
 
-    void Awake()
-    {
-        if (root == null)
-            root = gameObject;
-
-        root.SetActive(false);
-
-        if (okButton != null)
-            okButton.onClick.AddListener(Apply);
-
-        if (cancelButton != null)
-            cancelButton.onClick.AddListener(Close);
-    }
-
-    public void Open(Fish fish, FishInfoUI ui)
+    // called by FishInfoUI
+    public void OpenForFish(Fish fish, FishInfoUI sourceUi)
     {
         targetFish = fish;
-        infoUI = ui;
+        infoUI = sourceUi;
 
-        if (root != null)
-            root.SetActive(true);
+        if (nameInput != null)
+            nameInput.text = fish != null ? fish.GetDisplayName() : "";
 
-        if (inputField != null)
-        {
-            inputField.text = string.IsNullOrEmpty(fish.fishName) ? "" : fish.fishName;
-            inputField.Select();
-            inputField.ActivateInputField();
-        }
+        if (window != null) window.SetActive(true);
+        else gameObject.SetActive(true);
     }
 
-    void Apply()
+    // 🔹 THIS is the method you hook to the OK button
+    public void ConfirmRename()
     {
-        if (targetFish != null && inputField != null)
-        {
-            string newName = inputField.text.Trim();
-            if (string.IsNullOrEmpty(newName))
-                newName = "Unnamed Fish";
+        if (targetFish == null) { Close(); return; }
 
-            targetFish.fishName = newName;
-        }
+        string newName = nameInput != null ? nameInput.text : "";
+        targetFish.SetCustomName(newName);
 
-        // refresh info panel
         if (infoUI != null)
-            infoUI.ForceRefresh();
+            infoUI.Refresh();
 
         Close();
     }
 
+    // 🔹 Hook this to the Cancel / X button if you like
     public void Close()
     {
-        if (root != null)
-            root.SetActive(false);
-
-        targetFish = null;
-        infoUI = null;
+        if (window != null) window.SetActive(false);
+        else gameObject.SetActive(false);
     }
 }

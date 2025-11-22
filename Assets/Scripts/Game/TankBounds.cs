@@ -13,7 +13,7 @@ public class TankBounds : MonoBehaviour
 
     /// <summary>
     /// Returns a random point inside the tank rectangle.
-    /// margin keeps the point away from the edges a bit.
+    /// margin keeps the point away from the glass edges a bit.
     /// </summary>
     public Vector3 GetRandomPointInside(float margin = 0.5f)
     {
