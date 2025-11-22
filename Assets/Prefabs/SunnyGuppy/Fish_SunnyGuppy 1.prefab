@@ -163,7 +163,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fishName: 
-  breedId: Sunny Guppie
+  breedId: SunnyGuppie
   breedDisplayName: SunnyGuppie
   sex: 0
   ageSeconds: 0
@@ -182,7 +182,7 @@ MonoBehaviour:
   babyDuration: 20
   babyScale: 0.2
   adultScale: 0.5
-  babySprite: {fileID: 0}
+  babySprite: {fileID: -1841855709, guid: a0e1c8963528cc24b9f587cb71d60918, type: 3}
   adultSprite: {fileID: 773355812, guid: 745fad99ead07a64e955bfbc33ffabed, type: 3}
   sr: {fileID: 0}
   sparklePrefab: {fileID: 0}

@@ -49,9 +49,7 @@ public class BreedingManager : MonoBehaviour
 
                 if (a == null || b == null) continue;
                 if (a == b) continue;
-
                 if (!a.CanBreed() || !b.CanBreed()) continue;
-
                 if (a.ageSeconds < minAgeSeconds || b.ageSeconds < minAgeSeconds) continue;
                 if (a.health01 < minHealth || b.health01 < minHealth) continue;
                 if (a.Hunger01 < minHunger || b.Hunger01 < minHunger) continue;
@@ -87,34 +85,23 @@ public class BreedingManager : MonoBehaviour
         string displayName = a.breedDisplayName;
 
         if (gameController == null)
-        {
             gameController = FindObjectOfType<GameController>();
-        }
 
         Fish child = null;
 
         if (gameController != null)
-        {
             child = gameController.SpawnFishByBreedId(breedId, pos);
-        }
 
         if (child != null)
         {
-            child.ageSeconds = 0f;
-            child.hunger = 1f;
-            child.health = 1f;
             child.fishName = "";
             child.breedId = breedId;
             child.breedDisplayName = displayName;
 
-            child.isBaby = true;
-            child.transform.localScale = Vector3.one * child.babyScale;
+            // ensure baby
+            child.MakeBaby();
 
-            if (child.sr != null && child.babySprite != null)
-            {
-                child.sr.sprite = child.babySprite;
-            }
-
+            // traits from parents
             child.traits = TraitInheritanceSystem.InheritTraits(a, b);
         }
 
@@ -122,3 +109,4 @@ public class BreedingManager : MonoBehaviour
         b.TriggerBreedCooldown();
     }
 }
+

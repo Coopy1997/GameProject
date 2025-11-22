@@ -5,228 +5,356 @@ using UnityEngine.UI;
 
 public class GameController : MonoBehaviour
 {
-    public static GameController Instance;
-
     [Header("Economy")]
     public int gold = 50;
     public TMP_Text goldText;
     public int goldPerFishFeed = 3;
-    public int goldPerFishSell = 50;
+    public int fallbackBaseSellValue = 50;
     public int goldFromCleanBonus = 10;
+
+    [Header("Capacity")]
+    public int maxFish = 3;          // tank capacity, used by other systems
 
     [Header("Spawning")]
     public Transform fishParent;
-    public Fish fallbackFishPrefab;
-    public List<FishCatalogItem> fishCatalog = new List<FishCatalogItem>();
-    public int maxFish = 50;
+    public GameObject fishPrefab;    // generic fallback prefab
+    public Transform[] spawnPoints;
 
-    [Header("References")]
-    public WaterHealthController waterHealth;
-    public ShopController shop;
+    [Header("Egg Prefabs")]
+    public FishEgg commonEggPrefab;
+    public FishEgg rareEggPrefab;
+    public FishEgg legendaryEggPrefab;
+
+    [Header("Fish Breeds by Rarity")]
+    public FishCatalogItem[] commonBreeds;
+    public FishCatalogItem[] rareBreeds;
+    public FishCatalogItem[] legendaryBreeds;
+
+    [Header("UI")]
+    public TMP_Text statusText;
+    public GameObject shopPanel;
+    public Button shopButton;
+    public Button closeShopButton;
 
     [Header("Audio")]
     public AudioSource audioSource;
-    public AudioClip buySound;
-    public AudioClip sellSound;
+    public AudioClip clickSound;
+    public AudioClip shopSound;
+    public AudioClip successSound;
     public AudioClip errorSound;
-    public AudioClip feedSound;
-    public AudioClip cleanSound;
+    public AudioClip sellSound;
+
+    [Header("FX")]
+    public FloatingGoldText goldPopupPrefab;
+
+    [Header("State")]
+    public List<Fish> allFish = new List<Fish>();
+
+    private WaterHealthController waterHealth;
+    private static GameController _instance;
+    public static GameController Instance => _instance;
 
     void Awake()
     {
-        if (Instance && Instance != this)
+        if (_instance != null && _instance != this)
         {
             Destroy(gameObject);
             return;
         }
-        Instance = this;
-        UpdateGoldUI();
-    }
+        _instance = this;
 
-    void Start()
-    {
+        waterHealth = FindObjectOfType<WaterHealthController>();
+        UpdateGoldUI();
+
+        if (shopButton) shopButton.onClick.AddListener(OpenShop);
+        if (closeShopButton) closeShopButton.onClick.AddListener(CloseShop);
+
+        // collect any fish already in scene
+        var fishes = FindObjectsOfType<Fish>();
+        for (int i = 0; i < fishes.Length; i++)
+        {
+            if (!allFish.Contains(fishes[i]))
+                allFish.Add(fishes[i]);
+        }
+
         UpdateFishCount();
     }
 
-    public void UpdateGoldUI()
-    {
-        if (goldText) goldText.text = gold + " G";
-    }
-
-    public void AddGold(int amount)
-    {
-        gold += amount;
-        if (gold < 0) gold = 0;
-        UpdateGoldUI();
-    }
-
+    // =========================================================
+    // Economy
+    // =========================================================
     public bool TrySpendGold(int amount)
     {
-        if (amount <= 0) return true;
         if (gold < amount)
         {
             PlaySound(errorSound);
             return false;
         }
+
         gold -= amount;
         UpdateGoldUI();
-        PlaySound(buySound);
+        PlaySound(successSound);
         return true;
     }
 
-    public Fish SpawnFish()
+    public void AddGold(int amount)
     {
-        if (GetFishCount() >= maxFish)
-        {
-            PlaySound(errorSound);
-            return null;
-        }
-
-        FishCatalogItem item = null;
-        if (fishCatalog != null && fishCatalog.Count > 0)
-        {
-            item = fishCatalog[0];
-        }
-
-        Vector3 pos = GetRandomTankPosition();
-        Fish f = SpawnFishFromItem(item, pos);
-        return f;
+        gold += amount;
+        UpdateGoldUI();
+        PlaySound(successSound);
     }
 
-    public Fish SpawnFishByBreedId(string breedId)
+    void UpdateGoldUI()
     {
-        Vector3 pos = GetRandomTankPosition();
-        return SpawnFishByBreedId(breedId, pos);
+        if (goldText) goldText.text = $"Gold: {gold}";
     }
 
-    public Fish SpawnFishByBreedId(string breedId, Vector3 worldPos)
+    // =========================================================
+    // Shop Controls
+    // =========================================================
+    public void OpenShop()
     {
-        if (GetFishCount() >= maxFish)
-        {
-            PlaySound(errorSound);
-            return null;
-        }
-
-        FishCatalogItem item = GetCatalogItemByBreedId(breedId);
-        if (item != null)
-        {
-            return SpawnFishFromItem(item, worldPos);
-        }
-
-        return SpawnFishFromPrefab(fallbackFishPrefab, worldPos, breedId);
+        if (shopPanel) shopPanel.SetActive(true);
+        PlaySound(shopSound ? shopSound : clickSound);
     }
 
-    Fish SpawnFishFromItem(FishCatalogItem item, Vector3 pos)
+    public void CloseShop()
     {
-        if (item == null || item.prefab == null)
-        {
-            return SpawnFishFromPrefab(fallbackFishPrefab, pos, null);
-        }
-
-        Fish prefab = item.prefab;
-        Transform parent = fishParent ? fishParent : null;
-        Fish f = Instantiate(prefab, pos, Quaternion.identity, parent);
-
-        f.breedId = prefab.breedId;
-        f.breedDisplayName = item.displayName;
-
-        UpdateFishCount();
-        return f;
+        if (shopPanel) shopPanel.SetActive(false);
+        PlaySound(clickSound);
     }
 
-    Fish SpawnFishFromPrefab(Fish prefab, Vector3 pos, string overrideBreedId)
+    public void ToggleShopPanel()
     {
-        if (prefab == null) return null;
+        if (!shopPanel) return;
+        bool newState = !shopPanel.activeSelf;
+        shopPanel.SetActive(newState);
+        PlaySound(clickSound);
+    }
 
-        Transform parent = fishParent ? fishParent : null;
-        Fish f = Instantiate(prefab, pos, Quaternion.identity, parent);
+    // =========================================================
+    // Fish Spawning (generic)
+    // =========================================================
+    public void SpawnFish()
+    {
+        SpawnFish(fishPrefab);
+    }
 
-        if (!string.IsNullOrEmpty(overrideBreedId))
+    public void SpawnFish(GameObject prefab)
+    {
+        if (!prefab) return;
+
+        Transform spawnPoint = null;
+        if (spawnPoints != null && spawnPoints.Length > 0)
         {
-            f.breedId = overrideBreedId;
+            int idx = Random.Range(0, spawnPoints.Length);
+            spawnPoint = spawnPoints[idx];
         }
 
-        if (string.IsNullOrEmpty(f.breedDisplayName))
+        Vector3 pos = spawnPoint ? spawnPoint.position : Vector3.zero;
+        GameObject f = Instantiate(prefab, pos, Quaternion.identity, fishParent);
+        Fish fish = f.GetComponent<Fish>();
+        if (fish != null)
         {
-            f.breedDisplayName = prefab.breedDisplayName;
+            if (!allFish.Contains(fish))
+                allFish.Add(fish);
+
+            // every spawned fish starts as a baby
+            fish.MakeBaby();
         }
 
         UpdateFishCount();
-        return f;
     }
 
-    FishCatalogItem GetCatalogItemByBreedId(string id)
-    {
-        if (fishCatalog == null) return null;
-        for (int i = 0; i < fishCatalog.Count; i++)
-        {
-            var item = fishCatalog[i];
-            if (item == null || item.prefab == null) continue;
+    // =========================================================
+    // Spawning from catalog / ids (used by eggs, breeding, debug)
+    // =========================================================
 
-            Fish pf = item.prefab;
-            if (!string.IsNullOrEmpty(pf.breedId) && pf.breedId == id) return item;
-            if (!string.IsNullOrEmpty(pf.breedDisplayName) && pf.breedDisplayName == id) return item;
-            if (!string.IsNullOrEmpty(item.displayName) && item.displayName == id) return item;
+    /// <summary>
+    /// Spawn a fish based on a catalog item, returns the Fish component.
+    /// </summary>
+    public Fish SpawnFishFromCatalog(FishCatalogItem catalog, Vector3 position)
+    {
+        if (catalog == null || catalog.prefab == null)
+        {
+            Debug.LogWarning("SpawnFishFromCatalog: missing prefab on catalog item");
+            return null;
+        }
+
+        // optional capacity check – comment out if you don't want this here
+        if (allFish.Count >= maxFish)
+        {
+            Debug.Log("[GameController] Tank at capacity, cannot spawn more fish.");
+            return null;
+        }
+
+        Fish fish = Instantiate(catalog.prefab, position, Quaternion.identity, fishParent);
+
+        if (fish != null)
+        {
+            fish.breedId = catalog.id;
+            fish.breedDisplayName = catalog.displayName;
+            fish.baseSellValue = catalog.baseSellValue;
+            fish.breedValueMultiplier = catalog.breedValueMultiplier;
+
+            fish.MakeBaby();
+
+            if (!allFish.Contains(fish))
+                allFish.Add(fish);
+        }
+
+        UpdateFishCount();
+        return fish;
+    }
+
+    /// <summary>
+    /// New helper to keep old scripts happy.
+    /// Spawns a fish by its breedId string and returns the Fish.
+    /// </summary>
+    public Fish SpawnFishByBreedId(string breedId, Vector3 position)
+    {
+        FishCatalogItem item = FindCatalogItemById(breedId);
+        if (item == null)
+        {
+            Debug.LogWarning("SpawnFishByBreedId: no catalog item with id " + breedId);
+            return null;
+        }
+
+        return SpawnFishFromCatalog(item, position);
+    }
+
+    /// <summary>
+    /// Searches all rarity arrays for a matching id.
+    /// </summary>
+    private FishCatalogItem FindCatalogItemById(string id)
+    {
+        if (string.IsNullOrEmpty(id)) return null;
+
+        FishCatalogItem result = FindInArray(commonBreeds, id);
+        if (result != null) return result;
+
+        result = FindInArray(rareBreeds, id);
+        if (result != null) return result;
+
+        result = FindInArray(legendaryBreeds, id);
+        if (result != null) return result;
+
+        return null;
+    }
+
+    private FishCatalogItem FindInArray(FishCatalogItem[] arr, string id)
+    {
+        if (arr == null) return null;
+        for (int i = 0; i < arr.Length; i++)
+        {
+            if (arr[i] != null && arr[i].id == id)
+                return arr[i];
         }
         return null;
     }
 
-    Vector3 GetRandomTankPosition()
+    // =========================================================
+    // Spawning from Eggs
+    // =========================================================
+    // Called by FishEgg / MysteryEgg when they hatch
+    public void SpawnFishFromEgg(EggRarity rarity, Vector3 position)
     {
-        TankBounds tb = FindObjectOfType<TankBounds>();
-        if (!tb) return Vector3.zero;
+        FishCatalogItem[] source = commonBreeds;
 
-        float x = Random.Range(tb.min.x, tb.max.x);
-        float y = Random.Range(tb.min.y, tb.max.y);
-        return new Vector3(x, y, 0f);
+        switch (rarity)
+        {
+            case EggRarity.Common: source = commonBreeds; break;
+            case EggRarity.Rare: source = rareBreeds; break;
+            case EggRarity.Legendary: source = legendaryBreeds; break;
+        }
+
+        if (source == null || source.Length == 0)
+        {
+            Debug.LogWarning("SpawnFishFromEgg: no breeds set for rarity " + rarity);
+            return;
+        }
+
+        FishCatalogItem catalog = source[Random.Range(0, source.Length)];
+        SpawnFishFromCatalog(catalog, position);
     }
 
+    // =========================================================
+    // Fish Management / Callbacks
+    // =========================================================
     public void OnFishFed(Fish fish)
     {
         AddGold(goldPerFishFeed);
-        PlaySound(feedSound);
     }
 
-    public void OnTankCleaned()
+    public void OnFishDied(Fish fish)
     {
-        AddGold(goldFromCleanBonus);
-        PlaySound(cleanSound);
+        if (fish && allFish.Contains(fish))
+            allFish.Remove(fish);
+
+        UpdateFishCount();
+        PlaySound(errorSound);
     }
 
     public void SellFish(Fish fish)
     {
         if (fish == null) return;
 
-        float mult = fish.GetSellPriceMultiplier();
-        int amount = Mathf.RoundToInt(goldPerFishSell * mult);
-        if (amount < 0) amount = 0;
+        int amount = fish.GetSellPrice();
+        if (amount <= 0) amount = fallbackBaseSellValue;
 
         AddGold(amount);
+
+        // floating +gold popup
+        if (goldPopupPrefab != null)
+        {
+            Vector3 pos = fish.transform.position;
+            FloatingGoldText popup = Instantiate(goldPopupPrefab, pos, Quaternion.identity);
+            popup.SetText("+" + amount + " G");
+        }
+
+        if (allFish.Contains(fish))
+            allFish.Remove(fish);
+
         Destroy(fish.gameObject);
         UpdateFishCount();
-        PlaySound(sellSound);
-    }
 
-    public int GetFishCount()
-    {
-        Fish[] fish = FindObjectsOfType<Fish>();
-        return fish == null ? 0 : fish.Length;
+        PlaySound(sellSound ? sellSound : successSound);
+        Debug.Log($"Sold {fish.breedDisplayName} for {amount} G");
     }
 
     public void UpdateFishCount()
     {
-        if (waterHealth != null)
+        // clean up nulls
+        for (int i = allFish.Count - 1; i >= 0; i--)
         {
-            int c = GetFishCount();
-            waterHealth.RegisterFishCount(c);
+            if (allFish[i] == null)
+                allFish.RemoveAt(i);
         }
+
+        if (waterHealth)
+            waterHealth.RegisterFishCount(allFish.Count);
     }
 
+    /// <summary>
+    /// Old helper for scripts: current number of fish in tank.
+    /// </summary>
+    public int GetFishCount()
+    {
+        // in case nulls got left in the list
+        int count = 0;
+        for (int i = 0; i < allFish.Count; i++)
+        {
+            if (allFish[i] != null) count++;
+        }
+        return count;
+    }
+
+    // =========================================================
+    // Helpers
+    // =========================================================
     public void PlaySound(AudioClip clip)
     {
         if (audioSource && clip)
-        {
             audioSource.PlayOneShot(clip);
-        }
     }
 }

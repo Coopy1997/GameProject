@@ -1,53 +1,41 @@
-using UnityEngine;
+﻿using UnityEngine;
 using TMPro;
 
-public class TooltipUI : MonoBehaviour
+public class ToolTipUI : MonoBehaviour
 {
     public GameObject root;
     public TMP_Text text;
 
-    RectTransform rt;
-    int lastOpenFrame;
-
-    void Awake()
+    private void Awake()
     {
-        if (root == null) root = gameObject;
-        if (text == null) text = GetComponentInChildren<TMP_Text>();
-
-        rt = root.GetComponent<RectTransform>();
-        root.SetActive(false);
+        if (root != null)
+            root.SetActive(false);
     }
 
-    public bool IsVisible
-    {
-        get { return root != null && root.activeSelf; }
-    }
-
-    public void Show(string msg)
+    // Show tooltip with text + position
+    public void Show(string tooltipText, Vector2 screenPos)
     {
         if (root == null || text == null) return;
 
+        text.text = tooltipText;
         root.SetActive(true);
-        text.text = msg;
 
-        // we DO NOT move the panel here � you can position it by hand in the editor
-        lastOpenFrame = Time.frameCount;
+        // convert screenPos → world/UI position
+        Vector2 anchoredPos;
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            root.transform.parent as RectTransform,
+            screenPos,
+            null,
+            out anchoredPos
+        );
+
+        root.GetComponent<RectTransform>().anchoredPosition = anchoredPos;
     }
 
+    // Hide tooltip
     public void Hide()
     {
-        if (root == null) return;
-        root.SetActive(false);
-    }
-
-    void Update()
-    {
-        if (!IsVisible) return;
-
-        // click anywhere to close, but ignore the same frame as the opening click
-        if (Input.GetMouseButtonDown(0) && Time.frameCount > lastOpenFrame)
-        {
-            Hide();
-        }
+        if (root != null)
+            root.SetActive(false);
     }
 }

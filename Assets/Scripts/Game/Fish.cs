@@ -7,31 +7,75 @@ public enum FishSex
     Female
 }
 
+public enum TraitType
+{
+    Hungry,
+    Peckish,
+    Glutton,
+    SlowMetabolism,
+    Hardy,
+    Fragile,
+    RapidGrowth,
+    SlowGrowth,
+    Social,
+    Territorial,
+    Breeder,
+    Shy,
+    Calm,
+    Energetic,
+    CleanFreak,
+    DirtyScavenger,
+    Lucky,
+    Mutated,
+    JewelScales,
+    Drab,
+    AncientSpirit
+}
+
+public enum TraitRarity
+{
+    Common,
+    Uncommon,
+    Rare,
+    Epic,
+    Legendary
+}
+
+[System.Serializable]
+public class Trait
+{
+    public TraitType type;
+    public string name;
+    public string description;
+    public TraitRarity rarity;
+
+    public Trait(TraitType type, string name, string description, TraitRarity rarity)
+    {
+        this.type = type;
+        this.name = name;
+        this.description = description;
+        this.rarity = rarity;
+    }
+}
+
 public class Fish : MonoBehaviour
 {
     [Header("Identity")]
     public string fishName = "Fish";
-    public string breedId = "SunnyGuppy";
-    public string breedDisplayName = "Sunny Guppy";
+    public string breedId = "DefaultFish";
+    public string breedDisplayName = "Default Fish";
     public FishSex sex = FishSex.Male;
 
     [Header("Age")]
     public float ageSeconds = 0f;
 
     [Header("Hunger & Health")]
-    public float hunger = 1f;
-    public float health = 1f;
+    public float hunger = 1f;          // 0..1
+    public float health = 1f;          // 0..1
     public float hungerDrainPerSecond = 0.05f;
 
-    public float Hunger01
-    {
-        get { return Mathf.Clamp01(hunger); }
-    }
-
-    public float health01
-    {
-        get { return Mathf.Clamp01(health); }
-    }
+    public float Hunger01 => Mathf.Clamp01(hunger);
+    public float health01 => Mathf.Clamp01(health);
 
     [Header("Movement")]
     public float speed = 1.5f;
@@ -49,11 +93,13 @@ public class Fish : MonoBehaviour
     public float breedCooldown = 30f;
     public float breedTimer = 0f;
 
-    [Header("Growth")]
-    public bool isBaby = false;
+    [Header("Growth (Baby → Adult)")]
+    public bool isBaby = true;
     public float babyDuration = 20f;
-    public float babyScale = 0.4f;
-    public float adultScale = 1f;
+    public float babyScale = 0.15f;      // was 0.4
+    public float adultScale = 1f;        // overridden at runtime
+    public float adultScaleMin = 0.6f;   // was 0.8
+    public float adultScaleMax = 1.0f;   // was 1.2
     float babyAge = 0f;
     public Sprite babySprite;
     public Sprite adultSprite;
@@ -61,6 +107,16 @@ public class Fish : MonoBehaviour
     [Header("Visuals")]
     public SpriteRenderer sr;
     public GameObject sparklePrefab;
+
+    [Header("Death")]
+    public bool isDead = false;
+    public float floatSpeed = 0.5f;
+    public Color deadColor = new Color(0.5f, 1f, 0.5f, 1f);
+
+    [Header("Value")]
+    public int baseSellValue = 50;       // default base value if catalog not used
+    public float breedValueMultiplier = 1f;  // set from FishCatalogItem
+    float sizeValueMultiplier = 1f;      // calculated from adultScale
 
     TankBounds tank;
 
@@ -74,34 +130,28 @@ public class Fish : MonoBehaviour
             traits = TraitDatabase.GetRandomTraits(1, 2);
         }
 
-        if (Random.value < 0.5f) sex = FishSex.Male;
-        else sex = FishSex.Female;
+        sex = (Random.value < 0.5f) ? FishSex.Male : FishSex.Female;
 
         if (adultSprite == null && sr != null)
-        {
             adultSprite = sr.sprite;
-        }
 
-        if (isBaby)
-        {
-            babyAge = 0f;
-            if (babySprite != null && sr != null)
-            {
-                sr.sprite = babySprite;
-            }
-            transform.localScale = Vector3.one * babyScale;
-        }
-        else
-        {
-            transform.localScale = Vector3.one * adultScale;
-        }
+        // randomize adult size for this fish
+        adultScale = Random.Range(adultScaleMin, adultScaleMax);
+        sizeValueMultiplier = GetSizeValueMultiplierInternal();
 
+        MakeBaby();
         CheckLegendarySparkle();
         PickNewDirection();
     }
 
     void Update()
     {
+        if (isDead)
+        {
+            UpdateDeadFloat();
+            return;
+        }
+
         float ageMul = GetAgeSpeedMultiplier();
         ageSeconds += Time.deltaTime * ageMul;
 
@@ -110,6 +160,32 @@ public class Fish : MonoBehaviour
         UpdateHealth();
         UpdateBreedingTimer();
         UpdateMovement();
+    }
+
+    // ---------------- BABY / GROWTH ----------------
+
+    public void MakeBaby()
+    {
+        isBaby = true;
+        babyAge = 0f;
+        ageSeconds = 0f;
+
+        if (sr == null) sr = GetComponent<SpriteRenderer>();
+
+        transform.localScale = Vector3.one * babyScale;
+
+        if (sr != null && babySprite != null)
+            sr.sprite = babySprite;
+    }
+
+    void Mature()
+    {
+        isBaby = false;
+
+        if (sr != null && adultSprite != null)
+            sr.sprite = adultSprite;
+
+        transform.localScale = Vector3.one * adultScale;
     }
 
     void UpdateBabyGrowth()
@@ -124,25 +200,28 @@ public class Fish : MonoBehaviour
         transform.localScale = Vector3.one * scale;
 
         if (babyAge >= babyDuration)
-        {
             Mature();
-        }
     }
 
-    void Mature()
-    {
-        isBaby = false;
-        if (sr != null && adultSprite != null)
-        {
-            sr.sprite = adultSprite;
-        }
-        transform.localScale = Vector3.one * adultScale;
-    }
+    // ---------------- BREEDING ----------------
 
     void UpdateBreedingTimer()
     {
         if (breedTimer > 0f) breedTimer -= Time.deltaTime;
     }
+
+    public bool CanBreed()
+    {
+        if (isBaby) return false;
+        return canBreed && breedTimer <= 0f;
+    }
+
+    public void TriggerBreedCooldown()
+    {
+        breedTimer = breedCooldown;
+    }
+
+    // ---------------- HUNGER & HEALTH ----------------
 
     void UpdateHunger()
     {
@@ -171,66 +250,22 @@ public class Fish : MonoBehaviour
 
         float water = 1f;
         if (WaterHealthController.Instance != null)
-        {
             water = WaterHealthController.Instance.currentHealth;
-        }
 
         if (HasTrait(TraitType.CleanFreak) && water > 0.8f)
-        {
             health += 0.03f * Time.deltaTime;
-        }
 
         if (!HasTrait(TraitType.DirtyScavenger) && water < 0.3f)
-        {
             health -= 0.03f * badLossMul * Time.deltaTime;
-        }
 
         if (HasTrait(TraitType.Drab))
-        {
             health -= 0.01f * Time.deltaTime;
-        }
 
         if (HasTrait(TraitType.Mutated))
-        {
             health -= 0.01f * Time.deltaTime;
-        }
 
         health = Mathf.Clamp01(health);
         if (health <= 0f) Die();
-    }
-
-    void UpdateMovement()
-    {
-        if (!tank) return;
-
-        idleTimer -= Time.deltaTime;
-        if (idleTimer <= 0f) PickNewDirection();
-
-        float moveSpeed = speed * GetSpeedMultiplier();
-        transform.position += (Vector3)(targetDir * moveSpeed * Time.deltaTime);
-
-        if (sr) sr.flipX = targetDir.x < 0;
-
-        Vector2 min = tank.min;
-        Vector2 max = tank.max;
-        Vector3 pos = transform.position;
-
-        if (pos.x < min.x || pos.x > max.x)
-        {
-            targetDir.x *= -1;
-        }
-
-        if (pos.y < min.y || pos.y > max.y)
-        {
-            targetDir.y *= -1;
-        }
-    }
-
-    void PickNewDirection()
-    {
-        float angle = Random.Range(0f, Mathf.PI * 2f);
-        targetDir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-        idleTimer = Random.Range(idleTimeMin, idleTimeMax);
     }
 
     public void Eat(float amount)
@@ -255,19 +290,81 @@ public class Fish : MonoBehaviour
 
     void Die()
     {
+        if (isDead) return;
+        isDead = true;
+
+        if (sr != null)
+        {
+            sr.color = deadColor;
+            sr.flipY = true;
+        }
+
+        hungerDrainPerSecond = 0f;
+        speed = 0f;
+    }
+
+    // ---------------- MOVEMENT ----------------
+
+    void UpdateMovement()
+    {
+        if (!tank) tank = FindObjectOfType<TankBounds>();
+        if (!tank) return;
+
+        idleTimer -= Time.deltaTime;
+        if (idleTimer <= 0f) PickNewDirection();
+
+        float moveSpeed = speed * GetSpeedMultiplier();
+        transform.position += (Vector3)(targetDir * moveSpeed * Time.deltaTime);
+
+        if (sr) sr.flipX = targetDir.x < 0;
+
+        Vector2 min = tank.min;
+        Vector2 max = tank.max;
+        Vector3 pos = transform.position;
+
+        if (pos.x < min.x || pos.x > max.x)
+            targetDir.x *= -1;
+
+        if (pos.y < min.y || pos.y > max.y)
+            targetDir.y *= -1;
+    }
+
+    void PickNewDirection()
+    {
+        float angle = Random.Range(0f, Mathf.PI * 2f);
+        targetDir = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+        idleTimer = Random.Range(idleTimeMin, idleTimeMax);
+    }
+
+    // ---------------- DEAD FLOAT ----------------
+
+    void UpdateDeadFloat()
+    {
+        if (tank == null)
+            tank = FindObjectOfType<TankBounds>();
+        if (tank == null) return;
+
+        transform.position += Vector3.up * floatSpeed * Time.deltaTime;
+
+        if (transform.position.y > tank.max.y - 0.1f)
+        {
+            Vector3 p = transform.position;
+            p.y = tank.max.y - 0.1f;
+            transform.position = p;
+        }
+    }
+
+    void OnMouseDown()
+    {
+        if (!isDead) return;
+
+        if (GameController.Instance != null)
+            GameController.Instance.UpdateFishCount();
+
         Destroy(gameObject);
     }
 
-    public bool CanBreed()
-    {
-        if (isBaby) return false;
-        return canBreed && breedTimer <= 0f;
-    }
-
-    public void TriggerBreedCooldown()
-    {
-        breedTimer = breedCooldown;
-    }
+    // ---------------- TRAIT HELPERS ----------------
 
     public bool HasTrait(TraitType t)
     {
@@ -280,6 +377,22 @@ public class Fish : MonoBehaviour
         return false;
     }
 
+    Dictionary<string, int> GetTraitCounts()
+    {
+        Dictionary<string, int> counts = new Dictionary<string, int>();
+        if (traits == null) return counts;
+
+        for (int i = 0; i < traits.Count; i++)
+        {
+            Trait t = traits[i];
+            if (t == null) continue;
+            string n = t.name;
+            if (!counts.ContainsKey(n)) counts[n] = 0;
+            counts[n]++;
+        }
+        return counts;
+    }
+
     public float GetHungerDrainMultiplier()
     {
         float m = 1f;
@@ -290,21 +403,20 @@ public class Fish : MonoBehaviour
         if (HasTrait(TraitType.Calm)) m *= 0.85f;
         if (HasTrait(TraitType.Energetic)) m *= 1.2f;
 
-        Dictionary<string, int> counts = GetTraitCounts();
+        var counts = GetTraitCounts();
         foreach (var kv in counts)
         {
             if (kv.Value >= 2)
             {
                 if (kv.Key == "Hungry" || kv.Key == "Glutton" || kv.Key == "Energetic")
-                {
                     m *= 1.2f;
-                }
                 if (kv.Key == "Peckish" || kv.Key == "Slow Metabolism" || kv.Key == "Calm")
-                {
                     m *= 0.8f;
-                }
             }
         }
+
+        if (DecorationManager.Instance != null)
+            m *= DecorationManager.Instance.HungerDrainMultiplier;
 
         return m;
     }
@@ -345,6 +457,10 @@ public class Fish : MonoBehaviour
     {
         float m = 1f;
         if (HasTrait(TraitType.Drab)) m *= 0.8f;
+
+        if (DecorationManager.Instance != null)
+            m *= DecorationManager.Instance.HealthRegenMultiplier;
+
         return m;
     }
 
@@ -356,17 +472,18 @@ public class Fish : MonoBehaviour
         if (HasTrait(TraitType.Mutated)) m *= 1.1f;
         if (HasTrait(TraitType.Lucky)) m *= 1.1f;
 
-        Dictionary<string, int> counts = GetTraitCounts();
+        var counts = GetTraitCounts();
         foreach (var kv in counts)
         {
             if (kv.Value >= 2)
             {
                 if (kv.Key == "Breeder" || kv.Key == "Lucky")
-                {
                     m *= 1.5f;
-                }
             }
         }
+
+        if (DecorationManager.Instance != null)
+            m *= DecorationManager.Instance.BreedChanceMultiplier;
 
         return m;
     }
@@ -390,47 +507,54 @@ public class Fish : MonoBehaviour
             }
 
             if (t.type == TraitType.JewelScales)
-            {
                 mult *= 1.25f;
-            }
             if (t.type == TraitType.Drab)
-            {
                 mult *= 0.8f;
-            }
         }
 
-        Dictionary<string, int> counts = GetTraitCounts();
+        var counts = GetTraitCounts();
         foreach (var kv in counts)
         {
             if (kv.Value >= 2)
-            {
                 mult *= 1.5f;
-            }
         }
+
+        if (DecorationManager.Instance != null)
+            mult *= DecorationManager.Instance.SellPriceMultiplier;
 
         return mult;
     }
 
-    Dictionary<string, int> GetTraitCounts()
+    float GetSizeValueMultiplierInternal()
     {
-        Dictionary<string, int> counts = new Dictionary<string, int>();
-        if (traits == null) return counts;
+        // Map adultScale 0.8→1.2 to value 0.8x→1.3x
+        float t = Mathf.InverseLerp(adultScaleMin, adultScaleMax, adultScale);
+        return Mathf.Lerp(0.8f, 1.3f, t);
+    }
 
-        for (int i = 0; i < traits.Count; i++)
-        {
-            Trait t = traits[i];
-            if (t == null) continue;
-            string n = t.name;
-            if (!counts.ContainsKey(n)) counts[n] = 0;
-            counts[n]++;
-        }
-        return counts;
+    public float GetSizeValueMultiplier()
+    {
+        return sizeValueMultiplier;
+    }
+
+    // FINAL SELL PRICE
+    public int GetSellPrice()
+    {
+        float baseVal = baseSellValue * breedValueMultiplier;
+        float result = baseVal;
+        result *= GetSellPriceMultiplier();
+        result *= GetSizeValueMultiplier();
+
+        if (health01 < 0.5f) result *= 0.7f;   // sick fish sell cheaper
+        if (isBaby) result *= 0.5f;           // babies are cheaper than adults
+
+        if (result < 0f) result = 0f;
+        return Mathf.RoundToInt(result);
     }
 
     void CheckLegendarySparkle()
     {
-        if (sparklePrefab == null) return;
-        if (traits == null) return;
+        if (sparklePrefab == null || traits == null) return;
 
         for (int i = 0; i < traits.Count; i++)
         {

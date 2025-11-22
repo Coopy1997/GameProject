@@ -1,73 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public enum TraitType
-{
-    Hungry,
-    Peckish,
-    Glutton,
-    SlowMetabolism,
-    Hardy,
-    Fragile,
-    RapidGrowth,
-    SlowGrowth,
-    Social,
-    Territorial,
-    Breeder,
-    Shy,
-    Calm,
-    Energetic,
-    CleanFreak,
-    DirtyScavenger,
-    Lucky,
-    Mutated,
-    JewelScales,
-    Drab,
-    AncientSpirit
-}
-
-public enum TraitRarity
-{
-    Common,
-    Uncommon,
-    Rare,
-    Epic,
-    Legendary
-}
-
-[System.Serializable]
-public class Trait
-{
-    public TraitType type;
-    public string name;
-    public string description;
-    public TraitRarity rarity;
-
-    public Trait(TraitType type, string name, string description, TraitRarity rarity)
-    {
-        this.type = type;
-        this.name = name;
-        this.description = description;
-        this.rarity = rarity;
-    }
-}
-
-public static class TraitColors
-{
-    public static string GetColor(TraitRarity rarity)
-    {
-        switch (rarity)
-        {
-            default:
-            case TraitRarity.Common: return "#FFFFFF";
-            case TraitRarity.Uncommon: return "#6CFF78";
-            case TraitRarity.Rare: return "#45C6FF";
-            case TraitRarity.Epic: return "#C55BFF";
-            case TraitRarity.Legendary: return "#FFA500";
-        }
-    }
-}
-
 public static class TraitDatabase
 {
     public static List<Trait> allTraits = new List<Trait>()
@@ -84,7 +17,7 @@ public static class TraitDatabase
         new Trait(TraitType.SlowGrowth, "Slow Growth", "Ages slower.", TraitRarity.Common),
 
         new Trait(TraitType.Social, "Social", "Health drains slower with other fish around.", TraitRarity.Uncommon),
-        new Trait(TraitType.Territorial, "Territorial", "More stressed (hunger drains faster) in crowded tanks.", TraitRarity.Common),
+        new Trait(TraitType.Territorial, "Territorial", "More stressed in crowded tanks.", TraitRarity.Common),
 
         new Trait(TraitType.Breeder, "Breeder", "Higher chance to breed.", TraitRarity.Rare),
         new Trait(TraitType.Shy, "Shy", "Lower chance to breed unless fewer fish.", TraitRarity.Common),
@@ -96,7 +29,7 @@ public static class TraitDatabase
         new Trait(TraitType.DirtyScavenger, "Dirty Scavenger", "Ignores dirty water penalties.", TraitRarity.Rare),
 
         new Trait(TraitType.Lucky, "Lucky", "Better chance for rare offspring and events.", TraitRarity.Epic),
-        new Trait(TraitType.Mutated, "Mutated", "Weird genetics, slightly higher breed chance but drains health faster.", TraitRarity.Epic),
+        new Trait(TraitType.Mutated, "Mutated", "Weird genetics, higher breed chance but drains health faster.", TraitRarity.Epic),
 
         new Trait(TraitType.JewelScales, "Jewel Scales", "Sell value is higher.", TraitRarity.Rare),
         new Trait(TraitType.Drab, "Drab", "Sell value is lower but drains less health.", TraitRarity.Common),
@@ -131,10 +64,25 @@ public static class TraitDatabase
         for (int i = 0; i < allTraits.Count; i++)
         {
             if (allTraits[i].rarity == TraitRarity.Legendary)
-            {
                 return allTraits[i];
-            }
         }
         return null;
     }
 }
+
+public static class TraitColors
+{
+    public static string GetColor(TraitRarity rarity)
+    {
+        switch (rarity)
+        {
+            default:
+            case TraitRarity.Common: return "#FFFFFF";  // white
+            case TraitRarity.Uncommon: return "#6CFF78";  // green
+            case TraitRarity.Rare: return "#45C6FF";  // blue
+            case TraitRarity.Epic: return "#C55BFF";  // purple
+            case TraitRarity.Legendary: return "#FFA500";  // orange
+        }
+    }
+}
+

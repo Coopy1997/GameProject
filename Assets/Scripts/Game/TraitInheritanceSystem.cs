@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+
 public static class TraitInheritanceSystem
 {
     public static List<Trait> InheritTraits(Fish a, Fish b)
@@ -18,22 +19,23 @@ public static class TraitInheritanceSystem
             finalList.Add(t);
         }
 
+        // Legendary mutation 0.1% chance
         float r = Random.value;
         if (r <= 0.001f)
         {
             Trait legendary = TraitDatabase.GetLegendaryTrait();
             if (legendary != null)
-            {
                 finalList.Add(legendary);
-            }
         }
 
+        // Clamp to 1–2 traits
         while (finalList.Count > 2)
         {
             int index = Random.Range(0, finalList.Count);
             finalList.RemoveAt(index);
         }
 
+        // If empty, add at least one random
         if (finalList.Count < 1)
         {
             Trait randomTrait = TraitDatabase.allTraits[Random.Range(0, TraitDatabase.allTraits.Count)];
@@ -64,3 +66,4 @@ public static class TraitInheritanceSystem
         }
     }
 }
+
